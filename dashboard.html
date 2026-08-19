@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shiblu's Workspace</title>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3;
+    --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; --amber:#d29922;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:24px;line-height:1.6}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+  h1{font-size:24px}
+  .sub{color:var(--muted);font-size:13px}
+  .updated{color:var(--muted);font-size:12px}
+  /* STATUS BAR */
+  .statusbar{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+  .stat{display:flex;flex-direction:column;align-items:center;min-width:80px}
+  .stat .num{font-size:22px;font-weight:700;color:var(--accent)}
+  .stat .lbl{font-size:11px;color:var(--muted)}
+  /* CONTROLS */
+  .controls{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .controls input,.controls select{background:#0d1117;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px}
+  .controls input{flex:1;min-width:200px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:20px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;transition:.2s}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .card h2{font-size:17px;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .card .desc{color:var(--muted);font-size:13px;margin-bottom:12px;min-height:38px}
+  .item{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+  .item .date{color:var(--accent);font-size:11px;display:block;margin-top:4px}
+  .empty{color:var(--muted);font-size:13px;font-style:italic}
+  .count{background:var(--accent);color:#0d1117;border-radius:20px;padding:1px 9px;font-size:12px;font-weight:700}
+  footer{margin-top:32px;color:var(--muted);font-size:12px;text-align:center}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🚀 Shiblu's Workspace</h1>
+    <div class="sub">Daily-life automation hub · powered by Hermes Agent</div>
+  </div>
+  <div class="updated" id="updated"></div>
+</header>
+
+<div class="statusbar" id="statusbar"></div>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="🔍 সার্চ করুন (যেকোনো কিছু...)">
+  <select id="filter">
+    <option value="all">সব সেকশন</option>
+    <option value="command_center">Command Center</option>
+    <option value="calendar">Calendar</option>
+    <option value="book_notes">Book Notes</option>
+    <option value="memory_world">Memory World</option>
+    <option value="research">Research</option>
+    <option value="lead_pipeline">Lead Pipeline</option>
+    <option value="tasks">Tasks</option>
+  </select>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>Hermes Agent · সরাসরি আপডেট করে · আপনার পিসিতে লোকাল</footer>
+
+<script src="data.js"></script>
+<script>
+  const D = window.WORKSPACE_DATA;
+  document.getElementById('updated').textContent = "Last update: " + D.updated;
+  const grid = document.getElementById('grid');
+  const statusbar = document.getElementById('statusbar');
+  const searchInput = document.getElementById('search');
+  const filterSelect = document.getElementById('filter');
+
+  function countItems(){
+    let total = 0, tasks = 0, leads = 0, reminders = 0;
+    for (const k in D.sections){
+      const n = D.sections[k].items ? D.sections[k].items.length : 0;
+      total += n;
+      if (k==='tasks') tasks = n;
+      if (k==='lead_pipeline') leads = n;
+    }
+    return {total, tasks, leads};
+  }
+
+  function renderStatus(){
+    const c = countItems();
+    statusbar.innerHTML = `
+      <div class="stat"><span class="num">${c.total}</span><span class="lbl">মোট এন্ট্রি</span></div>
+      <div class="stat"><span class="num">${c.tasks}</span><span class="lbl">টাস্ক</span></div>
+      <div class="stat"><span class="num">${c.leads}</span><span class="lbl">লিড</span></div>
+      <div class="stat"><span class="num">7</span><span class="lbl">সেকশন</span></div>
+      <div class="stat"><span class="num">5</span><span class="lbl">অটোমেশন</span></div>
+    `;
+  }
+
+  function renderCards(){
+    const q = searchInput.value.toLowerCase().trim();
+    const f = filterSelect.value;
+    grid.innerHTML = "";
+    for (const key in D.sections){
+      if (f !== 'all' && f !== key) continue;
+      const s = D.sections[key];
+      const card = document.createElement('div');
+      card.className = 'card';
+      let itemsHtml = "";
+      if (s.items && s.items.length){
+        const filtered = s.items.filter(it =>
+          !q || (it.text && it.text.toLowerCase().includes(q)) || (it.date && it.date.toLowerCase().includes(q))
+        );
+        if (filtered.length){
+          filtered.forEach(it=>{
+            itemsHtml += `<div class="item">${it.text}<span class="date">${it.date||''}</span></div>`;
+          });
+        } else {
+          itemsHtml = `<div class="empty">— মিল পাওয়া যায়নি —</div>`;
+        }
+      } else {
+        itemsHtml = `<div class="empty">— এখনো কিছু যোগ হয়নি —</div>`;
+      }
+      card.innerHTML = `
+        <h2>${s.icon} ${s.title} <span class="count">${s.items?s.items.length:0}</span></h2>
+        <div class="desc">${s.desc}</div>
+        ${itemsHtml}
+      `;
+      grid.appendChild(card);
+    }
+  }
+
+  searchInput.addEventListener('input', renderCards);
+  filterSelect.addEventListener('change', renderCards);
+
+  renderStatus();
+  renderCards();
+</script>
+</body>
+</html>
